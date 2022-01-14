@@ -35,7 +35,8 @@ public class WireNode extends Node {
 	public boolean shouldBreak;
 	public boolean prepared;
 	public boolean inNetwork;
-	
+	public boolean scanned;
+
 	public WireNode(WireBlock wireBlock, WorldAccess world, BlockPos pos, BlockState state) {
 		super(wireBlock, world);
 		
@@ -45,6 +46,8 @@ public class WireNode extends Node {
 		this.connections = new WireConnectionManager(this);
 		
 		this.virtualPower = this.currentPower = this.wireBlock.getPower(this.world, this.pos, this.state);
+
+		this.scanned = false;
 	}
 	
 	@Override
