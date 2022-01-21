@@ -45,7 +45,7 @@ public class AlternateCurrentMod implements ModInitializer {
 			LOGGER.warn(String.format("You are running a DEBUG version of %s!", MOD_NAME));
 		}
 		redstoneWireBlock = new InfinityWire(FabricBlockSettings.of(Material.DECORATION).noCollision().breakInstantly().nonOpaque());
-		redstoneWireBlockItem = new BlockItem(redstoneWireBlock, new FabricItemSettings().group(ItemGroup.REDSTONE));;
+		redstoneWireBlockItem = new BlockItem(redstoneWireBlock, new FabricItemSettings().group(ItemGroup.REDSTONE));
 		Registry.register(Registry.BLOCK, new Identifier(MOD_ID, "infinity_wire"), redstoneWireBlock);
 		Registry.register(Registry.ITEM, new Identifier(MOD_ID, "infinity_wire"), redstoneWireBlockItem);
 
