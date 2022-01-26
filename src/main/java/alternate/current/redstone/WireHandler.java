@@ -268,6 +268,7 @@ public class WireHandler {
 	private final WorldAccess world;
 	private final int minPower;
 	private final int maxPower;
+	private final int powerStep;
 
 	/** All the wires in the network. */
 	private final List<WireNode> network;
@@ -275,8 +276,6 @@ public class WireHandler {
 	private final Long2ObjectMap<Node> nodes;
 	/** All the power changes that need to happen. */
 	private final Queue<WireNode> powerChanges;
-	/** All the wires that have been scanned. */
-	private final List<WireNode> scanned;
 
 	private int rootCount;
 	// Rather than creating new nodes every time a network is updated
@@ -291,25 +290,17 @@ public class WireHandler {
 		this.world = world;
 		this.minPower = this.wireBlock.getMinPower();
 		this.maxPower = this.wireBlock.getMaxPower();
+		this.powerStep = this.wireBlock.getPowerStep();
 
 		this.network = new ArrayList<>();
 		this.nodes = new Long2ObjectOpenHashMap<>();
 		this.powerChanges = new PowerQueue(this.minPower, this.maxPower);
-		this.scanned = new ArrayList<>();
 
 		this.nodeCache = new Node[16];
 		this.fillNodeCache(0, 16);
 	}
 
 	private Node getOrAddNode(BlockPos pos) {
-//		if (nodeCache != null) {
-//			for (int i = 0; i < nodeCache.length; i++) {
-//				Node node = nodeCache[i];
-//				if (node.pos.equals(pos)) {
-//					return node;
-//				}
-//			}
-//		}
 		return nodes.compute(pos.asLong(), (key, node) -> {
 			if (node == null) {
 				// If there is not yet a node at this position,
@@ -458,7 +449,7 @@ public class WireHandler {
 		wire.removed = true;
 
 		invalidateNodes();
-		tryAddRoot(wire);
+		tryAddRoot(wire, false);
 		tryUpdatePower();
 	}
 
@@ -468,8 +459,8 @@ public class WireHandler {
 	 * the block and shape updates can lead to block changes. If
 	 * these block changes cause the network to be updated again
 	 * every node must be invalidated, and revalidated before it
-	 * is used again. This ensures the power calculations of the
-	 * network are accurate.
+	 * is used again. This ensures the power calculations are of
+	 * the network are accurate.
 	 */
 	private void invalidateNodes() {
 		if (updatingPower && !nodes.isEmpty()) {
@@ -532,7 +523,7 @@ public class WireHandler {
 		}
 
 		WireNode wire = node.asWire();
-		tryAddRoot(wire);
+		tryAddRoot(wire, !checkNeighbors);
 
 		// If the wire at the given position is not in an invalid
 		// state or is not part of a larger network, we can exit
@@ -595,7 +586,7 @@ public class WireHandler {
 			Node neighbor = getNeighbor(node, iDir);
 
 			if (weak && neighbor.isWire()) {
-				tryAddRoot(neighbor.asWire());
+				tryAddRoot(neighbor.asWire(), false);
 			} else if (strong && neighbor.isConductor()) {
 				findRootsAround(neighbor, iOpp);
 			}
@@ -611,7 +602,7 @@ public class WireHandler {
 			Node neighbor = getNeighbor(node, iDir);
 
 			if (neighbor.isWire()) {
-				tryAddRoot(neighbor.asWire());
+				tryAddRoot(neighbor.asWire(), false);
 			}
 		}
 	}
@@ -620,14 +611,16 @@ public class WireHandler {
 	 * Check if the given wire is in an illegal state and needs
 	 * power changes.
 	 */
-	private void tryAddRoot(WireNode wire) {
+	private void tryAddRoot(WireNode wire, boolean checkWirePower) {
 		// We only want need to check each wire once
 		if (wire.prepared) {
 			return;
 		}
 
 		prepareWire(wire);
-		findPower(wire, false);
+		if (powerStep != 0 || checkWirePower) {
+			findPower(wire, false);
+		}
 
 		if (needsPowerChange(wire)) {
 			network.add(wire);
@@ -667,14 +660,7 @@ public class WireHandler {
 			wire.shouldBreak = true;
 		}
 
-		boolean powerZero = wireBlock.getPowerStep() == 0;
-		if (powerZero) {
-			scanned.clear();
-		}
 		wire.virtualPower = wire.externalPower = (wire.removed || wire.shouldBreak) ? minPower : getExternalPower(wire);
-		if (powerZero) {
-			scanned.clear();
-		}
 		wireBlock.findWireConnections(wire, this::getNeighbor);
 	}
 
@@ -684,50 +670,15 @@ public class WireHandler {
 		for (int iDir = 0; iDir < Directions.ALL.length; iDir++) {
 			Node neighbor = getNeighbor(wire, iDir);
 
-			boolean powerZero = wireBlock.getPowerStep() == 0;
-			boolean isWire = neighbor.isWire();
-			if (!isWire) {
-				if (iDir != Directions.UP && iDir != Directions.DOWN) {
-					// check diagonal
-					Node tmp = getNeighbor(neighbor, Directions.UP);
-					if (tmp.isWire()) {
-						Node u = getNeighbor(wire, Directions.UP);
-						if (!u.isConductor()) {
-							isWire = true;
-							neighbor = tmp;
-						}
-					} else {
-						Node tmp2 = getNeighbor(neighbor, Directions.DOWN);
-						if (tmp2.isWire()) {
-							if (!neighbor.isConductor()) {
-								isWire = true;
-								neighbor = tmp2;
-							}
-						}
-					}
-				}
+			if (neighbor.isWire()) {
+				continue;
 			}
 
-			if (isWire) {
-				if (powerZero) {
-					WireNode wireNode = neighbor.asWire();
-					if (scanned.contains(wireNode)) {
-						continue;
-					} else {
-						scanned.add(wireNode);
-						power = Math.max(power, getExternalPower(wireNode));
-					}
-				} else {
-					continue;
-				}
+			if (neighbor.isConductor()) {
+				power = Math.max(power, getStrongPowerTo(neighbor, Directions.iOpposite(iDir)));
 			}
-			if (!powerZero || !isWire) {
-				if (neighbor.isConductor()) {
-					power = Math.max(power, getStrongPowerTo(neighbor, Directions.iOpposite(iDir)));
-				}
-				if (neighbor.isRedstoneComponent()) {
-					power = Math.max(power, world.getWeakPowerFrom(neighbor.pos, neighbor.state, Directions.ALL[iDir]));
-				}
+			if (neighbor.isRedstoneComponent()) {
+				power = Math.max(power, world.getWeakPowerFrom(neighbor.pos, neighbor.state, Directions.ALL[iDir]));
 			}
 
 			if (power >= maxPower) {
@@ -772,12 +723,12 @@ public class WireHandler {
 	 *   power to neighboring wires.
 	 * <br>
 	 * - Power received from neighboring wires will never exceed
-	 *   {@code maxPower - this.wireBlock.getPowerStep()}, so if the external power
+	 *   {@code maxPower - powerStep}, so if the external power
 	 *   is already larger than or equal to that, there is no need
 	 *   to check for power from neighboring wires.
 	 */
 	private void findPower(WireNode wire, boolean ignoreNetwork) {
-		if (wire.removed || wire.shouldBreak || wire.externalPower >= (maxPower - this.wireBlock.getPowerStep())) {
+		if (wire.removed || wire.shouldBreak || wire.externalPower >= (maxPower - powerStep)) {
 			return;
 		}
 
@@ -804,13 +755,7 @@ public class WireHandler {
 			WireNode neighbor = connection.wire;
 
 			if (!ignoreNetwork || !neighbor.inNetwork) {
-				int power;
-				int step = wireBlock.getPowerStep();
-				if (step == 0) {
-					power = Math.max(minPower, wire.virtualPower);
-				} else {
-					power = Math.max(minPower, neighbor.virtualPower - step);
-				}
+				int power = Math.max(minPower, neighbor.virtualPower - powerStep);
 				int iOpp = Directions.iOpposite(connection.iDir);
 
 				wire.offerPower(power, iOpp);
@@ -940,9 +885,11 @@ public class WireHandler {
 					}
 
 					prepareWire(neighbor);
-					findPower(neighbor, false);
+					if (powerStep != 0) {
+						findPower(neighbor, false);
+					}
 
-					if (needsPowerChange(neighbor)) {
+					if (powerStep == 0 || needsPowerChange(neighbor)) {
 						addToNetwork(neighbor, iDir);
 					}
 				}
@@ -979,7 +926,9 @@ public class WireHandler {
 	private void findPoweredWires() {
 		for (int index = 0; index < network.size(); index++) {
 			WireNode wire = network.get(index);
-			findPower(wire, true);
+			if (powerStep != 0) {
+				findPower(wire, true);
+			}
 
 			if (index < rootCount || wire.removed || wire.shouldBreak || wire.virtualPower > minPower) {
 				queuePowerChange(wire);
@@ -1028,7 +977,7 @@ public class WireHandler {
 	 * Transmit power from the given wire to neighboring wires.
 	 */
 	private void transmitPower(WireNode wire) {
-		int nextPower = Math.max(minPower, wire.virtualPower - this.wireBlock.getPowerStep());
+		int nextPower = Math.max(minPower, wire.virtualPower - powerStep);
 
 		for (int iDir : CARDINAL_UPDATE_ORDERS[wire.flowOut]) {
 			int start = wire.connections.start(iDir);
