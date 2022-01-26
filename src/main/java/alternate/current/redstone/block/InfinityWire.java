@@ -508,7 +508,7 @@ public class InfinityWire extends Block implements WireBlock {
     }
 
     protected static boolean connectsTo(BlockState state, @Nullable Direction dir) {
-        if (state.isOf(Blocks.REDSTONE_WIRE) || state.isOf(AlternateCurrentMod.redstoneWireBlock)) {
+        if (state.isOf(Blocks.REDSTONE_WIRE) || state.isOf(AlternateCurrentMod.InfinityWireBlock)) {
             return true;
         } else if (state.isOf(Blocks.REPEATER)) {
             Direction direction = state.get(RepeaterBlock.FACING);

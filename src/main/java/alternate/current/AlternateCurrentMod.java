@@ -34,8 +34,8 @@ public class AlternateCurrentMod implements ModInitializer {
 	
 	public static boolean on = true;
 
-	public static Block redstoneWireBlock;
-	public static BlockItem redstoneWireBlockItem;
+	public static Block InfinityWireBlock;
+	public static BlockItem InfinityWireBlockItem;
 
 	@Override
 	public void onInitialize() {
@@ -44,14 +44,14 @@ public class AlternateCurrentMod implements ModInitializer {
 		if (DEBUG) {
 			LOGGER.warn(String.format("You are running a DEBUG version of %s!", MOD_NAME));
 		}
-		redstoneWireBlock = new InfinityWire(FabricBlockSettings.of(Material.DECORATION).noCollision().breakInstantly().nonOpaque());
-		redstoneWireBlockItem = new BlockItem(redstoneWireBlock, new FabricItemSettings().group(ItemGroup.REDSTONE));
-		Registry.register(Registry.BLOCK, new Identifier(MOD_ID, "infinity_wire"), redstoneWireBlock);
-		Registry.register(Registry.ITEM, new Identifier(MOD_ID, "infinity_wire"), redstoneWireBlockItem);
+		InfinityWireBlock = new InfinityWire(FabricBlockSettings.of(Material.DECORATION).noCollision().breakInstantly().nonOpaque());
+		InfinityWireBlockItem = new BlockItem(InfinityWireBlock, new FabricItemSettings().group(ItemGroup.REDSTONE));
+		Registry.register(Registry.BLOCK, new Identifier(MOD_ID, "infinity_wire"), InfinityWireBlock);
+		Registry.register(Registry.ITEM, new Identifier(MOD_ID, "infinity_wire"), InfinityWireBlockItem);
 
-		BlockRenderLayerMap.INSTANCE.putBlock(redstoneWireBlock, RenderLayer.getCutout());
+		BlockRenderLayerMap.INSTANCE.putBlock(InfinityWireBlock, RenderLayer.getCutout());
 
-		ColorProviderRegistry.BLOCK.register((state, view, pos, tintIndex) -> InfinityWire.getWireColor(state.get(InfinityWire.POWER)), redstoneWireBlock);
+		ColorProviderRegistry.BLOCK.register((state, view, pos, tintIndex) -> InfinityWire.getWireColor(state.get(InfinityWire.POWER)), InfinityWireBlock);
 	}
 	
 	public static Profiler createProfiler() {
