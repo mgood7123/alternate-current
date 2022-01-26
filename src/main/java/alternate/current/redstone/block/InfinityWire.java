@@ -36,6 +36,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3f;
+import net.minecraft.util.registry.Registry;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.BlockView;
@@ -45,6 +46,21 @@ import net.minecraft.world.WorldView;
 import org.jetbrains.annotations.Nullable;
 
 public class InfinityWire extends Block implements WireBlock {
+
+    @Override
+    public boolean canInteractWith(WireBlock wireBlock) {
+        switch (wireBlock.getWireId()) {
+            case "minecraft:redstone_wire":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    @Override
+    public String getWireId() {
+        return Registry.BLOCK.getId(AlternateCurrentMod.InfinityWireBlock).toString();
+    }
 
     @Override
     public Block asBlock() {

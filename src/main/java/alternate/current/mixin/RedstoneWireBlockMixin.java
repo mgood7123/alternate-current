@@ -1,5 +1,7 @@
 package alternate.current.mixin;
 
+import net.minecraft.block.Blocks;
+import net.minecraft.util.registry.Registry;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.At.Shift;
@@ -25,7 +27,12 @@ import net.minecraft.world.World;
 
 @Mixin(RedstoneWireBlock.class)
 public abstract class RedstoneWireBlockMixin implements WireBlock {
-	
+
+	@Override
+	public String getWireId() {
+		return Registry.BLOCK.getId(Blocks.REDSTONE_WIRE).toString();
+	}
+
 	@Inject(
 			method = "update",
 			cancellable = true,

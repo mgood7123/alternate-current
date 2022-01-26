@@ -71,7 +71,7 @@ public class Node {
 		if (this.world.isConductor(this.pos, this.state)) {
 			this.flags |= CONDUCTOR;
 		}
-		if (!(this.state.getBlock() instanceof WireBlock) && this.state.emitsRedstonePower()) {
+		if (this.state.emitsRedstonePower()) {
 			this.flags |= REDSTONE;
 		}
 

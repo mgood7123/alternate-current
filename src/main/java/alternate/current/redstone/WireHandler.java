@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Queue;
 
 //import alternate.current.AlternateCurrentMod;
+import alternate.current.AlternateCurrentMod;
 import alternate.current.util.BlockUtil;
 //import alternate.current.util.profiler.Profiler;
 
@@ -14,6 +15,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectMap.Entry;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMaps;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
+import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
@@ -670,8 +672,15 @@ public class WireHandler {
 		for (int iDir = 0; iDir < Directions.ALL.length; iDir++) {
 			Node neighbor = getNeighbor(wire, iDir);
 
-			if (neighbor.isWire()) {
-				continue;
+			Block aBlock = wire.state.getBlock();
+			Block bBlock = neighbor.state.getBlock();
+
+			if (aBlock instanceof WireBlock && bBlock instanceof WireBlock) {
+				WireBlock a = (WireBlock) aBlock;
+				WireBlock b = (WireBlock) bBlock;
+				if (!b.canInteractWith(a) && !a.canInteractWith(b)) {
+					continue;
+				}
 			}
 
 			if (neighbor.isConductor()) {
@@ -700,6 +709,7 @@ public class WireHandler {
 			Node neighbor = getNeighbor(node, iDir);
 
 			if (neighbor.isRedstoneComponent()) {
+				AlternateCurrentMod.LOGGER.info("getStrongPowerTo: wire id = " + node.wireBlock.getWireId() + ", neighbor id = " + neighbor.wireBlock.getWireId());
 				power = Math.max(power, world.getStrongPowerFrom(neighbor.pos, neighbor.state, Directions.ALL[iDir]));
 
 				if (power >= maxPower) {

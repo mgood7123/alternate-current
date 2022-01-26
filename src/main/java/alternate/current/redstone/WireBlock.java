@@ -16,7 +16,14 @@ import net.minecraft.util.math.MathHelper;
  * @author Space Walker
  */
 public interface WireBlock {
-	
+	public default boolean canInteractWith(WireBlock wireBlock) {
+		return false;
+	}
+
+	public default String getWireId() {
+		return "";
+	}
+
 	public default Block asBlock() {
 		return (Block)this;
 	}
