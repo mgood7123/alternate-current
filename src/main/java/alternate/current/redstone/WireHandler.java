@@ -686,6 +686,22 @@ public class WireHandler {
 
 			boolean powerZero = wireBlock.getPowerStep() == 0;
 			boolean isWire = neighbor.isWire();
+			if (!isWire) {
+				if (iDir != Directions.UP && iDir != Directions.DOWN) {
+					// check diagonal
+					Node tmp = getNeighbor(neighbor, Directions.UP);
+					if (tmp.isWire()) {
+						isWire = true;
+						neighbor = tmp;
+					} else {
+						Node tmp2 = getNeighbor(neighbor, Directions.DOWN);
+						if (tmp2.isWire()) {
+							isWire = true;
+							neighbor = tmp2;
+						}
+					}
+				}
+			}
 
 			if (isWire) {
 				if (powerZero) {
