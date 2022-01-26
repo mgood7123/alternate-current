@@ -691,13 +691,18 @@ public class WireHandler {
 					// check diagonal
 					Node tmp = getNeighbor(neighbor, Directions.UP);
 					if (tmp.isWire()) {
-						isWire = true;
-						neighbor = tmp;
+						Node u = getNeighbor(wire, Directions.UP);
+						if (!u.isConductor()) {
+							isWire = true;
+							neighbor = tmp;
+						}
 					} else {
 						Node tmp2 = getNeighbor(neighbor, Directions.DOWN);
 						if (tmp2.isWire()) {
-							isWire = true;
-							neighbor = tmp2;
+							if (!neighbor.isConductor()) {
+								isWire = true;
+								neighbor = tmp2;
+							}
 						}
 					}
 				}
