@@ -1,9 +1,11 @@
 package alternate.current.redstone;
 
+import alternate.current.AlternateCurrentMod;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.registry.Registry;
 
 /**
  * This interface should be implemented by each wire block type.
@@ -16,12 +18,52 @@ import net.minecraft.util.math.MathHelper;
  * @author Space Walker
  */
 public interface WireBlock {
-	public default boolean canInteractWith(WireBlock wireBlock) {
-		return false;
+	/**
+	 * overridden by wires which provide power to {@link #ALL} or the identifier returned by {@link #getWireId()}
+	 * <br>
+	 * <br>
+	 */
+	static final AlternateCurrentMod.AC_Registry.Registry NONE = new AlternateCurrentMod.AC_Registry.Registry();
+
+	/**
+	 * *NOTE* provide power to, or receive power from, all wires
+	 * <br>
+	 * <br>
+	 */
+	static final AlternateCurrentMod.AC_Registry.Registry ALL = new AlternateCurrentMod.AC_Registry.Registry();
+
+	/**
+	 * specifies what wires can give power to this wire
+	 * <br>
+	 * <br>
+	 * the default implementation returns {@link #NONE}
+	 * <br>
+	 * <br>
+	 * *NOTE* {@link #NONE} is overridden by wires which provide power to {@link #ALL} or the identifier returned by {@link #getWireId()}
+	 * <br>
+	 * <br>
+	 * @param registry - add identifiers to this registry, <br>  for example:<br>{@code return registry.add("minecraft:redstone_wire");}
+	 * @return {@link #NONE}, {@link #ALL}, or registry (registry must not be empty)
+	 */
+	public default AlternateCurrentMod.AC_Registry.Registry canBePoweredBy(AlternateCurrentMod.AC_Registry.MutableRegistry registry) {
+		return NONE;
 	}
 
-	public default String getWireId() {
-		return "";
+	/**
+	 * specifies what wires can receive power from this wire
+	 * <br>
+	 * <br>
+	 * the default implementation returns {@link #NONE}
+	 * <br>
+	 * <br>
+	 * *NOTE* {@link #NONE} is overridden by wires which provide power to {@link #ALL} or the identifier returned by {@link #getWireId()}
+	 * <br>
+	 * <br>
+	 * @param registry - add identifiers to this registry, <br>  for example:<br>{@code return registry.add("minecraft:redstone_wire");}
+	 * @return {@link #NONE}, {@link #ALL}, or registry (registry must not be empty)
+	 */
+	public default AlternateCurrentMod.AC_Registry.Registry canPower(AlternateCurrentMod.AC_Registry.MutableRegistry registry) {
+		return NONE;
 	}
 
 	public default Block asBlock() {
@@ -67,5 +109,45 @@ public interface WireBlock {
 	 * neighboring WireNodes.
 	 */
 	public void findWireConnections(WireNode wire, WireHandler.NodeProvider nodeProvider);
-	
+
+	/**
+	 * useful when debugging wires, returns the wire's <b>registered block id</b>
+	 */
+	public default String getWireId() {
+		return Registry.BLOCK.getId(asBlock()).toString();
+	};
+
+	/**
+	 * returns a reference to the current {@link WireHandler}
+	 * <br>
+	 * <br>
+	 * this <b>MUST</b> be implemented
+	 * <br>
+	 * this <b>MUST NOT</b> return <b>null</b>
+	 * <br>
+	 * <br>
+	 */
+	WireHandler getWireHandler();
+
+	/**
+	 * sets the reference to the current {@link WireHandler}
+	 * <br>
+	 * <br>
+	 * this <b>MUST</b> be implemented
+	 * <br>
+	 * <br>
+	 */
+	void setWireHandler(WireHandler wireHandler);
+
+	/**
+	 * return <b>true</b> here if the registry should be <b>rebuilt</b> on <b>block update</b>
+	 * <br>
+	 * <br>
+	 * this can be useful when testing wire interaction
+	 * <br>
+	 * <br>
+	 */
+	default boolean rebuildRegistryOnUpdate() {
+		return false;
+	}
 }

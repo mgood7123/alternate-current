@@ -11,10 +11,9 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import com.google.common.collect.UnmodifiableIterator;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Random;
-import java.util.Set;
+
+import java.util.*;
+
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.block.*;
@@ -27,16 +26,12 @@ import net.minecraft.state.property.EnumProperty;
 import net.minecraft.state.property.IntProperty;
 import net.minecraft.state.property.Properties;
 import net.minecraft.state.property.Property;
-import net.minecraft.util.ActionResult;
-import net.minecraft.util.BlockMirror;
-import net.minecraft.util.BlockRotation;
-import net.minecraft.util.Hand;
+import net.minecraft.util.*;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3f;
-import net.minecraft.util.registry.Registry;
 import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.BlockView;
@@ -46,20 +41,52 @@ import net.minecraft.world.WorldView;
 import org.jetbrains.annotations.Nullable;
 
 public class InfinityWire extends Block implements WireBlock {
+    WireHandler handler;
 
     @Override
-    public boolean canInteractWith(WireBlock wireBlock) {
-        switch (wireBlock.getWireId()) {
-            case "minecraft:redstone_wire":
-                return true;
-            default:
-                return false;
-        }
+    public WireHandler getWireHandler() {
+        return handler;
     }
 
     @Override
-    public String getWireId() {
-        return Registry.BLOCK.getId(AlternateCurrentMod.InfinityWireBlock).toString();
+    public void setWireHandler(WireHandler wireHandler) {
+        handler = wireHandler;
+    }
+
+    /**
+     * specifies what wires can give power to this wire
+     * <br>
+     * <br>
+     * the default implementation returns {@link #NONE}
+     * <br>
+     * <br>
+     * *NOTE* {@link #NONE} is overriden by wires which provide power to {@link #ALL} or the identifier returned by {@link #getWireId()}
+     * <br>
+     * <br>
+     * @param registry - add identifiers to this registry, <br>  for example:<br>{@code return registry.add("minecraft:redstone_wire");}
+     * @return {@link #NONE}, {@link #ALL}, or registry (registry must not be empty)
+     */
+    @Override
+    public AlternateCurrentMod.AC_Registry.Registry canBePoweredBy(AlternateCurrentMod.AC_Registry.MutableRegistry registry) {
+        return registry.add("minecraft:redstone_wire");
+    }
+
+    /**
+     * specifies what wires can receive power from this wire
+     * <br>
+     * <br>
+     * the default implementation returns {@link #NONE}
+     * <br>
+     * <br>
+     * *NOTE* {@link #NONE} is overriden by wires which provide power to {@link #ALL} or the identifier returned by {@link #getWireId()}
+     * <br>
+     * <br>
+     * @param registry - add identifiers to this registry, <br>  for example:<br>{@code return registry.add("minecraft:redstone_wire");}
+     * @return {@link #NONE}, {@link #ALL}, or registry (registry must not be empty)
+     */
+    @Override
+    public AlternateCurrentMod.AC_Registry.Registry canPower(AlternateCurrentMod.AC_Registry.MutableRegistry registry) {
+        return registry.add("minecraft:redstone_wire");
     }
 
     @Override
@@ -88,7 +115,7 @@ public class InfinityWire extends Block implements WireBlock {
      */
     @Override
     public int getPowerStep() {
-        return 0;
+        return 1;
     }
 
     /**

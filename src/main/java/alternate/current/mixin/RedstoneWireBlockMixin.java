@@ -25,12 +25,20 @@ import net.minecraft.state.property.Properties;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
+import java.util.ArrayList;
+
 @Mixin(RedstoneWireBlock.class)
 public abstract class RedstoneWireBlockMixin implements WireBlock {
+	WireHandler handler;
 
 	@Override
-	public String getWireId() {
-		return Registry.BLOCK.getId(Blocks.REDSTONE_WIRE).toString();
+	public WireHandler getWireHandler() {
+		return handler;
+	}
+
+	@Override
+	public void setWireHandler(WireHandler wireHandler) {
+		handler = wireHandler;
 	}
 
 	@Inject(

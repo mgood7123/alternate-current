@@ -17,6 +17,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
+import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 
@@ -287,8 +288,18 @@ public class WireHandler {
 
 	private boolean updatingPower;
 
+	private AlternateCurrentMod.AC_Registry.Registry canPowerRegistry;
+	private AlternateCurrentMod.AC_Registry.Registry canBePoweredByRegistry;
+
+	private ArrayList<Block> canPower;
+	private ArrayList<Block> canBePoweredBy;
+
+	static final ArrayList<Block> NONE = new ArrayList<>();
+	static final ArrayList<Block> ALL = new ArrayList<>();
+
 	public WireHandler(WireBlock wireBlock, WorldAccess world) {
 		this.wireBlock = wireBlock;
+		this.wireBlock.setWireHandler(this);
 		this.world = world;
 		this.minPower = this.wireBlock.getMinPower();
 		this.maxPower = this.wireBlock.getMaxPower();
@@ -300,6 +311,64 @@ public class WireHandler {
 
 		this.nodeCache = new Node[16];
 		this.fillNodeCache(0, 16);
+
+		buildRegistry();
+	}
+
+	void buildRegistry() {
+		AlternateCurrentMod.LOGGER.info("building registry... (" + this.wireBlock.getWireId() + ")");
+		this.wireBlock.setWireHandler(this);
+		AlternateCurrentMod.AC_Registry.MutableRegistry tmp1 = new AlternateCurrentMod.AC_Registry.MutableRegistry();
+		this.canPowerRegistry = wireBlock.canPower(tmp1);
+
+		if (this.canPowerRegistry == tmp1 && tmp1.isEmpty()) {
+			AlternateCurrentMod.LOGGER.error("wire returned an empty registry for method WireBlock#canPower, defaulting to NONE, please return NONE, ALL, or put something into the provided registry before returning it");
+			this.canPowerRegistry = WireBlock.NONE;
+		}
+
+		AlternateCurrentMod.AC_Registry.MutableRegistry tmp2 = new AlternateCurrentMod.AC_Registry.MutableRegistry();
+		this.canBePoweredByRegistry = wireBlock.canBePoweredBy(tmp2);
+
+		if (this.canBePoweredByRegistry == tmp2 && tmp2.isEmpty()) {
+			AlternateCurrentMod.LOGGER.error("wire returned an empty registry for method WireBlock#canBePoweredBy, defaulting to NONE, please return NONE, ALL, or put something into the provided registry before returning it");
+			this.canBePoweredByRegistry = WireBlock.NONE;
+		}
+
+		// obtain blocks
+		if (this.canPowerRegistry == WireBlock.NONE) {
+			this.canPower = NONE;
+		} else if (this.canPowerRegistry == WireBlock.ALL) {
+			this.canPower = ALL;
+		} else {
+			canPower = new ArrayList<>();
+			List<Identifier> canPowerRegistryIdentifiers = this.canPowerRegistry.getIdentifiers();
+			for (Identifier identifier : canPowerRegistryIdentifiers) {
+				Block block = AlternateCurrentMod.AC_Registry.getOrNull(identifier);
+				if (block == null) {
+					AlternateCurrentMod.LOGGER.error("could not find a block instance for identifier: " + identifier);
+					continue;
+				}
+				canPower.add(block);
+			}
+		}
+
+		if (this.canBePoweredByRegistry == WireBlock.NONE) {
+			this.canBePoweredBy = NONE;
+		} else if (this.canBePoweredByRegistry == WireBlock.ALL) {
+			this.canBePoweredBy = ALL;
+		} else {
+			canBePoweredBy = new ArrayList<>();
+			List<Identifier> canBePoweredByRegistryIdentifiers = this.canBePoweredByRegistry.getIdentifiers();
+			for (Identifier identifier : canBePoweredByRegistryIdentifiers) {
+				Block block = AlternateCurrentMod.AC_Registry.getOrNull(identifier);
+				if (block == null) {
+					AlternateCurrentMod.LOGGER.error("could not find a block instance for identifier: " + identifier);
+					continue;
+				}
+				canBePoweredBy.add(block);
+			}
+		}
+		AlternateCurrentMod.LOGGER.info("built registry (" + this.wireBlock.getWireId() + ")");
 	}
 
 	private Node getOrAddNode(BlockPos pos) {
@@ -413,6 +482,9 @@ public class WireHandler {
 	 * update.
 	 */
 	public void onWireUpdated(BlockPos pos) {
+		if (wireBlock.rebuildRegistryOnUpdate()) {
+			buildRegistry();
+		}
 		invalidateNodes();
 		findRoots(pos, true);
 		tryUpdatePower();
@@ -678,8 +750,20 @@ public class WireHandler {
 			if (aBlock instanceof WireBlock && bBlock instanceof WireBlock) {
 				WireBlock a = (WireBlock) aBlock;
 				WireBlock b = (WireBlock) bBlock;
-				if (!b.canInteractWith(a) && !a.canInteractWith(b)) {
-					continue;
+				if (a != b) {
+					if (canBePoweredBy == ALL || canBePoweredBy.contains(b)) {
+//						AlternateCurrentMod.LOGGER.info("getExternalPower: " + a.getWireId() + " can be powered by " + b.getWireId());
+					} else {
+						WireHandler bWireHandler = b.getWireHandler();
+						if (bWireHandler.canPower == ALL || bWireHandler.canPower.contains(a)) {
+//							AlternateCurrentMod.LOGGER.info("getExternalPower: " + a.getWireId() + " can be powered by " + b.getWireId());
+//							AlternateCurrentMod.LOGGER.info("getExternalPower: " + b.getWireId() + " can power " + a.getWireId());
+						} else {
+//							AlternateCurrentMod.LOGGER.info("getExternalPower: " + a.getWireId() + " cannot be powered by " + b.getWireId());
+//							AlternateCurrentMod.LOGGER.info("getExternalPower: " + b.getWireId() + " cannot power " + a.getWireId());
+							continue;
+						}
+					}
 				}
 			}
 
@@ -709,7 +793,6 @@ public class WireHandler {
 			Node neighbor = getNeighbor(node, iDir);
 
 			if (neighbor.isRedstoneComponent()) {
-				AlternateCurrentMod.LOGGER.info("getStrongPowerTo: wire id = " + node.wireBlock.getWireId() + ", neighbor id = " + neighbor.wireBlock.getWireId());
 				power = Math.max(power, world.getStrongPowerFrom(neighbor.pos, neighbor.state, Directions.ALL[iDir]));
 
 				if (power >= maxPower) {
